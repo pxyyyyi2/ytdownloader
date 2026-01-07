@@ -43,38 +43,55 @@ def download():
         if not url:
             return jsonify({'error': 'URL is required'}), 400
         
+        # Validate URL first
+        if not url.strip():
+            return jsonify({'error': 'Invalid URL'}), 400
+        
         # Configure yt-dlp options
         filename = f"{int(time.time())}"
         
+        # Base options
+        base_opts = {
+            'outtmpl': f'{DOWNLOAD_FOLDER}/{filename}.%(ext)s',
+            'quiet': False,
+            'no_warnings': False,
+            'nocheckcertificate': True,
+            'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'extract_flat': False,
+        }
+        
         if download_type == 'audio':
             ydl_opts = {
+                **base_opts,
                 'format': 'bestaudio/best',
-                'outtmpl': f'{DOWNLOAD_FOLDER}/{filename}.%(ext)s',
                 'postprocessors': [{
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': 'mp3',
                     'preferredquality': quality,
                 }],
-                'quiet': True,
-                'no_warnings': True,
-                'ignoreerrors': True,
-                'nocheckcertificate': True,
-                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             }
         else:
             ydl_opts = {
-                'format': f'best[height<={quality}]',
-                'outtmpl': f'{DOWNLOAD_FOLDER}/{filename}.%(ext)s',
-                'quiet': True,
-                'no_warnings': True,
-                'ignoreerrors': True,
-                'nocheckcertificate': True,
-                'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                **base_opts,
+                'format': f'bestvideo[height<={quality}]+bestaudio/best[height<={quality}]/best',
+                'merge_output_format': 'mp4',
             }
         
         # Download
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            # Extract info first without downloading
+            info = ydl.extract_info(url, download=False)
+            
+            # Check if info was retrieved
+            if info is None:
+                return jsonify({'error': 'Could not retrieve video information. The video may be private, unavailable, or the URL is invalid.'}), 400
+            
+            # Now download
             info = ydl.extract_info(url, download=True)
+            
+            if info is None:
+                return jsonify({'error': 'Download failed - could not retrieve video'}), 500
+            
             title = info.get('title', 'Unknown')
             
             # Find the downloaded file
@@ -86,15 +103,21 @@ def download():
                     'type': download_type
                 })
         
-        return jsonify({'error': 'Download failed'}), 500
+        return jsonify({'error': 'Download completed but file not found'}), 500
         
+    except yt_dlp.utils.DownloadError as e:
+        return jsonify({'error': f'Download error: {str(e)}'}), 400
+    except yt_dlp.utils.ExtractorError as e:
+        return jsonify({'error': f'Cannot extract video: {str(e)}'}), 400
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 @app.route('/file/<filename>')
 def get_file(filename):
     try:
         file_path = os.path.join(DOWNLOAD_FOLDER, filename)
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'File not found'}), 404
         return send_file(file_path, as_attachment=True)
     except Exception as e:
         return jsonify({'error': str(e)}), 404
