@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Downloader</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #0f0f23;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            color: #fff;
+        }
+
+        /* Animated gradient background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.3), transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255, 107, 157, 0.3), transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(147, 51, 234, 0.2), transparent 50%),
+                linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            animation: gradient 15s ease infinite;
+            z-index: 0;
+        }
+
+        @keyframes gradient {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        /* Floating particles */
+        .particle {
+            position: fixed;
+            width: 3px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .container {
+            max-width: 520px;
+            width: 90%;
+            margin: 0 auto;
+            overflow-y: auto;
+            max-height: 90vh;
+            padding: 10px;
+            position: relative;
+            z-index: 10;
+        }
+
+        .container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .container::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .container::-webkit-scrollbar-thumb {
+            background: rgba(255, 107, 157, 0.4);
+            border-radius: 10px;
+        }
+
+        .container::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 107, 157, 0.6);
+        }
+
+        /* Glass morphism card */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(25px) saturate(180%);
+            -webkit-backdrop-filter: blur(25px) saturate(180%);
+            border-radius: 24px;
+            padding: 32px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            animation: fadeIn 0.6s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .glass-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo-container {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        .logo {
+            width: 72px;
+            height: 72px;
+            background: linear-gradient(135deg, rgba(255, 107, 157, 0.2), rgba(147, 51, 234, 0.2));
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            margin: 0 auto;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(255, 107, 157, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .logo::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: shine 3s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.7) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 400;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 24px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            padding: 6px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .tab.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(255, 107, 157, 0.2);
+        }
+
+        /* Input */
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 16px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            font-size: 15px;
+            color: #fff;
+            transition: all 0.3s ease;
+            font-weight: 400;
+        }
+
+        .input-group input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .input-group input:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 107, 157, 0.5);
+            box-shadow: 0 0 0 4px rgba(255, 107, 157, 0.1);
+        }
+
+        /* Quality selector */
+        .quality-selector {
+            margin-bottom: 20px;
+        }
+
+        .quality-selector label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .quality-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .quality-btn,
+        .audio-quality-btn {
+            flex: 1;
+            min-width: 70px;
+            padding: 10px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .quality-btn.active,
+        .audio-quality-btn.active {
+            background: linear-gradient(135deg, rgba(255, 107, 157, 0.3), rgba(147, 51, 234, 0.3));
+            color: #fff;
+            border-color: rgba(255, 107, 157, 0.5);
+            box-shadow: 0 4px 16px rgba(255, 107, 157, 0.3);
+        }
+
+        .quality-btn:hover,
+        .audio-quality-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        /* Buttons */
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 16px;
+            border: none;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translate(-50%, -50%);
+            transition: width 0.6s, height 0.6s;
+        }
+
+        .btn:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-video {
+            background: linear-gradient(135deg, rgba(255, 107, 157, 0.8), rgba(255, 107, 157, 0.6));
+            color: white;
+            box-shadow: 0 4px 20px rgba(255, 107, 157, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-video:hover {
+            box-shadow: 0 6px 30px rgba(255, 107, 157, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .btn-audio {
+            background: linear-gradient(135deg, rgba(147, 51, 234, 0.8), rgba(147, 51, 234, 0.6));
+            color: white;
+            box-shadow: 0 4px 20px rgba(147, 51, 234, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-audio:hover {
+            box-shadow: 0 6px 30px rgba(147, 51, 234, 0.6);
+            transform: translateY(-2px);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn span {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Progress bar */
+        .loading {
+            display: none;
+            padding: 20px 0;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .progress-container {
+            text-align: center;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b9d 0%, #9333ea 100%);
+            border-radius: 10px;
+            width: 0%;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px rgba(255, 107, 157, 0.5);
+        }
+
+        #progressStatus {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* Gallery */
+        .gallery {
+            display: none;
+        }
+
+        .gallery.active {
+            display: block;
+        }
+
+        .gallery h2 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #fff;
+            letter-spacing: -0.5px;
+        }
+
+        .file-item {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 16px;
+            border-radius: 14px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+        }
+
+        .file-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 107, 157, 0.3);
+            transform: translateX(4px);
+        }
+
+        .file-info h3 {
+            font-size: 15px;
+            margin-bottom: 4px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .file-info p {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, rgba(255, 107, 157, 0.3), rgba(147, 51, 234, 0.3));
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .icon-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 20px rgba(255, 107, 157, 0.4);
+        }
+
+        .icon-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Messages */
+        .message {
+            padding: 14px 18px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            display: none;
+            font-weight: 500;
+            font-size: 14px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .message.success {
+            background: rgba(34, 197, 94, 0.2);
+            color: #86efac;
+            border-color: rgba(34, 197, 94, 0.3);
+            display: block;
+        }
+
+        .message.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #fca5a5;
+            border-color: rgba(239, 68, 68, 0.3);
+            display: block;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 48px 20px;
+        }
+
+        .empty-state .emoji {
+            font-size: 56px;
+            margin-bottom: 12px;
+            display: block;
+            opacity: 0.4;
+        }
+
+        .empty-state p {
+            font-size: 15px;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 6px;
+        }
+
+        .empty-state p:last-child {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 24px;
+            padding: 20px;
+        }
+
+        .copyright {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.5);
+            font-weight: 500;
+        }
+
+        .copyright .heart {
+            color: #ff6b9d;
+            display: inline-block;
+            animation: heartbeat 1.5s ease-in-out infinite;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            25% { transform: scale(1.1); }
+            50% { transform: scale(1); }
+        }
+
+        .copyright .name {
+            font-weight: 700;
+            background: linear-gradient(135deg, #ff6b9d 0%, #9333ea 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* Mobile responsiveness */
+        @media (max-width: 480px) {
+            .glass-card {
+                padding: 24px;
+            }
+
+            .header h1 {
+                font-size: 24px;
+            }
+
+            .logo {
+                width: 64px;
+                height: 64px;
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo-container">
+                <div class="logo">📥</div>
+            </div>
+            <h1>YouTube Downloader</h1>
+            <p>Premium video & audio downloads</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('download')">Download</button>
+            <button class="tab" onclick="switchTab('gallery')">My Files</button>
+        </div>
+
+        <div id="download-section" class="glass-card">
+            <div id="message" class="message"></div>
+            
+            <div class="input-group">
+                <input type="text" id="urlInput" placeholder="Paste YouTube URL here..." />
+            </div>
+
+            <div class="quality-selector">
+                <label>Video Quality</label>
+                <div class="quality-buttons">
+                    <button class="quality-btn active" data-quality="360">360p</button>
+                    <button class="quality-btn" data-quality="480">480p</button>
+                    <button class="quality-btn" data-quality="720">720p</button>
+                    <button class="quality-btn" data-quality="1080">1080p</button>
+                </div>
+            </div>
+
+            <div class="quality-selector">
+                <label>Audio Quality</label>
+                <div class="quality-buttons">
+                    <button class="audio-quality-btn active" data-quality="128">128 kbps</button>
+                    <button class="audio-quality-btn" data-quality="192">192 kbps</button>
+                    <button class="audio-quality-btn" data-quality="320">320 kbps</button>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-video" onclick="downloadMedia('video')">
+                    <span>🎬</span> <span>Video</span>
+                </button>
+                <button class="btn btn-audio" onclick="downloadMedia('audio')">
+                    <span>🎵</span> <span>Audio</span>
+                </button>
+            </div>
+
+            <div id="loading" class="loading">
+                <div class="progress-container">
+                    <div class="progress-info">
+                        <span id="progressPercent">0%</span>
+                        <span id="progressSize">0 MB / 0 MB</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <p id="progressStatus">Preparing download...</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="gallery-section" class="gallery glass-card">
+            <h2>My Downloads</h2>
+            <div id="fileList"></div>
+        </div>
+
+        <div class="footer">
+            <p class="copyright">
+                Made with <span class="heart">♥</span> by <span class="name">PrinceRaj</span>
+                <br>
+                © 2026 All Rights Reserved
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Create floating particles
+        for (let i = 0; i < 30; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.top = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 5 + 's';
+            particle.style.animation = `float ${5 + Math.random() * 10}s ease-in-out infinite`;
+            document.body.appendChild(particle);
+        }
+
+        let currentTab = 'download';
+        let selectedVideoQuality = '360';
+        let selectedAudioQuality = '192';
+
+        // Handle quality button clicks
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('quality-btn')) {
+                document.querySelectorAll('.quality-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                selectedVideoQuality = e.target.dataset.quality;
+            }
+            
+            if (e.target.classList.contains('audio-quality-btn')) {
+                document.querySelectorAll('.audio-quality-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                selectedAudioQuality = e.target.dataset.quality;
+            }
+        });
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (tab === 'download') {
+                document.getElementById('download-section').style.display = 'block';
+                document.getElementById('gallery-section').classList.remove('active');
+            } else {
+                document.getElementById('download-section').style.display = 'none';
+                document.getElementById('gallery-section').classList.add('active');
+                loadFiles();
+            }
+        }
+
+        function showMessage(text, type) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = `message ${type}`;
+            setTimeout(() => {
+                msg.className = 'message';
+            }, 5000);
+        }
+
+        async function downloadMedia(type) {
+            const url = document.getElementById('urlInput').value.trim();
+            
+            if (!url) {
+                showMessage('Please enter a YouTube URL', 'error');
+                return;
+            }
+
+            const loading = document.getElementById('loading');
+            const buttons = document.querySelectorAll('.btn');
+            const progressFill = document.getElementById('progressFill');
+            const progressPercent = document.getElementById('progressPercent');
+            const progressSize = document.getElementById('progressSize');
+            const progressStatus = document.getElementById('progressStatus');
+            
+            loading.classList.add('active');
+            buttons.forEach(btn => btn.disabled = true);
+            
+            // Reset progress
+            progressFill.style.width = '0%';
+            progressPercent.textContent = '0%';
+            progressSize.textContent = '0 MB / 0 MB';
+            progressStatus.textContent = 'Starting download...';
+
+            try {
+                // Simulate progress
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    if (progress < 90) {
+                        progress += Math.random() * 10;
+                        if (progress > 90) progress = 90;
+                        progressFill.style.width = progress + '%';
+                        progressPercent.textContent = Math.round(progress) + '%';
+                        
+                        const estimatedSize = (progress / 100) * 50;
+                        progressSize.textContent = `${estimatedSize.toFixed(1)} MB / ~50 MB`;
+                        
+                        if (progress < 30) {
+                            progressStatus.textContent = 'Fetching video...';
+                        } else if (progress < 70) {
+                            progressStatus.textContent = 'Downloading...';
+                        } else {
+                            progressStatus.textContent = 'Almost done...';
+                        }
+                    }
+                }, 500);
+
+                const response = await fetch('/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ 
+                        url, 
+                        type,
+                        quality: type === 'video' ? selectedVideoQuality : selectedAudioQuality
+                    })
+                });
+
+                clearInterval(progressInterval);
+                
+                // Complete the progress
+                progressFill.style.width = '100%';
+                progressPercent.textContent = '100%';
+                progressStatus.textContent = 'Download complete!';
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showMessage(`✅ Downloaded: ${data.title}`, 'success');
+                    document.getElementById('urlInput').value = '';
+                    
+                    // Auto download file
+                    setTimeout(() => {
+                        window.location.href = `/file/${data.filename}`;
+                    }, 500);
+                } else {
+                    showMessage(`❌ Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showMessage(`❌ Error: ${error.message}`, 'error');
+            } finally {
+                setTimeout(() => {
+                    loading.classList.remove('active');
+                    buttons.forEach(btn => btn.disabled = false);
+                }, 1000);
+            }
+        }
+
+        async function loadFiles() {
+            try {
+                const response = await fetch('/files');
+                const data = await response.json();
+                const fileList = document.getElementById('fileList');
+
+                if (data.files && data.files.length > 0) {
+                    fileList.innerHTML = data.files.map(file => `
+                        <div class="file-item">
+                            <div class="file-info">
+                                <h3>${file.name}</h3>
+                                <p>${file.size} • ${file.date}</p>
+                            </div>
+                            <button class="icon-btn" onclick="downloadFile('${file.name}')">
+                                ⬇️
+                            </button>
+                        </div>
+                    `).join('');
+                } else {
+                    fileList.innerHTML = `
+                        <div class="empty-state">
+                            <span class="emoji">📂</span>
+                            <p>No files yet</p>
+                            <p>Download videos or music to see them here</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading files:', error);
+            }
+        }
+
+        function downloadFile(filename) {
+            window.location.href = `/file/${filename}`;
+        }
+
+        // Enter key support
+        document.getElementById('urlInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                downloadMedia('video');
+            }
+        });
+    </script>
+</body>
+</html>
