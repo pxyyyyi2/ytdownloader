@@ -49,7 +49,7 @@ def download():
         # Configure yt-dlp options
         filename = f"{int(time.time())}"
         
-        # Base options with improved compatibility
+        # Base options with maximum compatibility
         base_opts = {
             'outtmpl': f'{DOWNLOAD_FOLDER}/{filename}.%(ext)s',
             'quiet': False,
@@ -57,18 +57,25 @@ def download():
             'nocheckcertificate': True,
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
             'referer': 'https://www.youtube.com/',
+            # Try multiple player clients for maximum compatibility
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['android', 'web'],
-                    'player_skip': ['webpage', 'configs'],
+                    'player_client': ['android', 'web', 'ios', 'mweb'],
+                    'player_skip': ['webpage'],
+                    'skip': ['hls', 'dash'],
                 }
             },
             'http_headers': {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
                 'Accept-Language': 'en-us,en;q=0.5',
+                'Accept-Encoding': 'gzip, deflate',
                 'Sec-Fetch-Mode': 'navigate',
-            }
+            },
+            # Additional fallback options
+            'socket_timeout': 30,
+            'retries': 3,
+            'fragment_retries': 3,
         }
         
         if download_type == 'audio':
